@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>NeuroStock AI | Control Panel</title>
+	<link rel="icon" type="image/png" href="/assets/logo.png">
+	<script src="https://cdn.tailwindcss.com"></script>
+	<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+	<script src="https://unpkg.com/lucide@latest"></script>
+	<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+	<style>
+		body { font-family: 'Inter', sans-serif; background-color: #F8FAFC; color: #1E293B; }
+		.sidebar-item.active { background-color: #EEF2FF; color: #4F46E5; font-weight: 600; border-right: 4px solid #4F46E5; }
+		.card { background: white; border: 1px solid #E2E8F0; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+		.tab-content { display: none; }
+		.tab-content.active { display: block; }
+
+		/* Скроллбары */
+		::-webkit-scrollbar { width: 5px; height: 5px; }
+		::-webkit-scrollbar-track { background: transparent; }
+		.custom-scroll::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 10px; }
+		.dark-scroll::-webkit-scrollbar-thumb { background: #059669; border-radius: 10px; }
+		.indigo-scroll::-webkit-scrollbar-thumb { background: #818CF8; border-radius: 10px; }
+
+		/* Мобильное меню */
+		@media (max-width: 1024px) {
+			#sidebar { position: fixed; z-index: 100; height: 100%; transform: translateX(-100%); transition: transform 0.3s ease; }
+			#sidebar.show { transform: translateX(0); display: flex !important; }
+			#overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 90; }
+			#overlay.active { display: block; }
+		}
+	</style>
+</head>
+<body class="flex h-screen overflow-hidden custom-scroll">
+
+	<div id="overlay" onclick="toggleMobileMenu()"></div>
+
+	<div id="login-overlay" class="fixed inset-0 z-[110] flex items-center justify-center bg-white/80 backdrop-blur-md px-4">
+		<div class="bg-white p-6 md:p-10 rounded-3xl shadow-2xl border border-slate-200 w-full max-w-md">
+			<div class="flex justify-center mb-6">
+				<div class="w-14 h-14 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-indigo-200">
+					<i data-lucide="brain-circuit" class="w-8 h-8"></i>
+				</div>
+			</div>
+			<h2 class="text-2xl md:text-3xl font-bold text-center mb-2 tracking-tight text-slate-900">NeuroStock</h2>
+			<p class="text-slate-400 text-center mb-8 text-sm font-medium">Вход в систему управления</p>
+			<div class="space-y-4">
+				<input id="username" type="text" placeholder="Логин" onkeypress="if(event.key==='Enter') login()" class="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 ring-indigo-500 transition">
+				<input id="password" type="password" placeholder="Пароль" onkeypress="if(event.key==='Enter') login()" class="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 ring-indigo-500 transition">
+				<button onclick="login()" class="w-full bg-indigo-600 text-white py-4 rounded-xl font-bold hover:bg-indigo-700 transition uppercase tracking-wider text-sm">Авторизоваться</button>
+			</div>
+		</div>
+	</div>
+
+	<aside id="sidebar" class="w-72 bg-white border-r hidden lg:flex flex-col shrink-0">
+		<div class="p-8 flex items-center justify-between border-b">
+			<div class="flex items-center gap-3">
+				<div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white"><i data-lucide="layers" class="w-6 h-6"></i></div>
+				<span class="font-bold text-xl tracking-tight text-slate-800">NeuroStock <span class="text-indigo-600">AI</span></span>
+			</div>
+			<button onclick="toggleMobileMenu()" class="lg:hidden text-slate-400"><i data-lucide="x"></i></button>
+		</div>
+		<nav class="flex-1 py-6 px-4 space-y-2 overflow-y-auto custom-scroll">
+			<button onclick="switchTab('overview', this)" class="sidebar-item active w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-slate-500 hover:bg-slate-50 transition">
+				<i data-lucide="layout-grid" class="w-5 h-5"></i> Обзор
+			</button>
+			<button onclick="switchTab('inventory', this)" class="sidebar-item w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-slate-500 hover:bg-slate-50 transition">
+				<i data-lucide="package" class="w-5 h-5"></i> Складской учет
+			</button>
+			<button id="nav-finance" onclick="switchTab('finance', this)" class="sidebar-item hidden w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-slate-500 hover:bg-slate-50 transition">
+				<i data-lucide="pie-chart" class="w-5 h-5"></i> Фин. отчеты
+			</button>
+		</nav>
+		<div class="p-6 border-t bg-slate-50/50 text-center">
+			<div id="user-display" class="text-sm font-bold text-slate-800"></div>
+			<div id="user-role" class="text-[10px] text-indigo-500 font-bold uppercase mb-4"></div>
+			<button onclick="location.reload()" class="text-xs text-rose-500 font-semibold flex items-center justify-center gap-2 w-full hover:underline"><i data-lucide="log-out" class="w-4 h-4"></i> Выход</button>
+		</div>
+	</aside>
+
+	<main id="main-content" class="flex-1 overflow-y-auto hidden custom-scroll">
+		<div class="p-4 md:p-10 max-w-7xl mx-auto">
+			<header class="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-10">
+				<div class="flex items-center gap-4 w-full md:w-auto">
+					<button onclick="toggleMobileMenu()" class="lg:hidden p-2 bg-white border rounded-xl shadow-sm text-indigo-600">
+						<i data-lucide="menu"></i>
+					</button>
+					<div>
+						<h1 class="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">Панель управления</h1>
+						<p class="text-slate-400 font-medium text-sm" id="current-date"></p>
+					</div>
+				</div>
+				<div id="weather-box" class="bg-white px-6 py-4 rounded-2xl border shadow-sm w-full md:w-auto"></div>
+			</header>
+
+			<section id="tab-overview" class="tab-content active space-y-8">
+				<div class="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+					<div class="card p-4 md:p-6 border-b-4 border-rose-500">
+						<p class="text-slate-400 text-[9px] md:text-[10px] font-bold uppercase mb-2">Риски</p>
+						<div id="m-risk" class="text-2xl md:text-4xl font-black text-slate-900">0</div>
+					</div>
+					<div class="card p-4 md:p-6 border-b-4 border-indigo-500">
+						<p class="text-slate-400 text-[9px] md:text-[10px] font-bold uppercase mb-2">Товары</p>
+						<div id="m-skus" class="text-2xl md:text-4xl font-black text-slate-900">0</div>
+					</div>
+					<div class="card p-4 md:p-6 border-b-4 border-emerald-500">
+						<p class="text-slate-400 text-[9px] md:text-[10px] font-bold uppercase mb-2">Eco-Index</p>
+						<div id="m-eco" class="text-2xl md:text-4xl font-black text-emerald-600">0</div>
+					</div>
+					<div id="m-loss-card" class="card p-4 md:p-6 border-b-4 border-slate-900 bg-slate-900 text-white hidden">
+						<p class="text-indigo-300 text-[9px] md:text-[10px] font-bold uppercase mb-2">Убытки</p>
+						<div id="m-loss" class="text-2xl md:text-4xl font-black">0 ₽</div>
+					</div>
+				</div>
+
+				<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+					<div class="lg:col-span-2 space-y-6">
+						<div class="card p-4 md:p-8">
+							<h3 class="font-bold text-lg mb-8 flex items-center gap-3"><i data-lucide="bar-chart-big" class="text-indigo-600"></i> Динамика списаний</h3>
+							<div class="h-[200px] md:h-[300px]">
+								<canvas id="forecastChart"></canvas>
+							</div>
+						</div>
+						<div class="card p-6 bg-slate-900 text-emerald-400 font-mono text-[11px] overflow-hidden shadow-2xl min-h-[160px]">
+							<div class="flex items-center justify-between mb-4 border-b border-slate-800 pb-2">
+								<div class="flex items-center gap-2">
+									<div class="w-2 h-2 bg-emerald-500 rounded-full animate-ping"></div>
+									<span class="uppercase tracking-widest font-bold">Neuro-Engine Logs</span>
+								</div>
+							</div>
+							<div class="space-y-1 overflow-y-auto max-h-[100px] dark-scroll" id="ai-logs"></div>
+						</div>
+					</div>
+
+					<div class="card flex flex-col bg-slate-50 border-slate-200 shadow-lg overflow-hidden h-[500px] lg:h-[650px]">
+						<div class="p-6 border-b bg-white">
+							<div class="flex items-center justify-between mb-4">
+								<span class="flex items-center gap-2 font-bold text-slate-900 uppercase text-xs tracking-wider">
+									<i data-lucide="zap" class="w-4 h-4 fill-amber-400 text-amber-400"></i> AI План действий
+								</span>
+								<span id="ai-actions-count" class="text-[10px] bg-indigo-600 text-white px-2 py-0.5 rounded-full font-bold">0</span>
+							</div>
+							<div class="flex gap-2">
+								<button onclick="toggleAllChecks(true)" class="flex-1 text-[9px] font-bold py-1.5 border border-slate-200 rounded-lg hover:bg-slate-50 bg-white">ВЫБРАТЬ ВСЁ</button>
+								<button onclick="toggleAllChecks(false)" class="flex-1 text-[9px] font-bold py-1.5 border border-slate-200 rounded-lg hover:bg-slate-50 bg-white">СНЯТЬ ВСЁ</button>
+							</div>
+						</div>
+						<div id="ai-plan-list" class="flex-1 divide-y divide-slate-200 overflow-y-auto indigo-scroll bg-white"></div>
+						<div class="p-4 bg-slate-50 border-t">
+							<button onclick="applyAllDiscounts()" class="w-full bg-indigo-600 text-white py-3.5 rounded-xl text-xs font-bold hover:bg-indigo-700 transition shadow-lg active:scale-[0.98]">
+								ПРИМЕНИТЬ ВЫБРАННЫЕ
+							</button>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<section id="tab-inventory" class="tab-content">
+				<div class="card overflow-hidden">
+					<div class="p-4 md:p-6 border-b flex flex-col gap-4 bg-white">
+						<h3 class="font-bold text-xl text-slate-800">Реестр склада</h3>
+						<div class="flex flex-col md:flex-row gap-4">
+							<input type="text" id="invSearch" onkeyup="filterInventory()" placeholder="Поиск товара..." class="flex-1 p-2.5 bg-slate-50 border rounded-xl text-sm">
+							<select id="catFilter" onchange="filterInventory()" class="p-2.5 border rounded-xl text-sm bg-slate-50">
+								<option value="">Все категории</option>
+								<option value="0">Готовая еда</option>
+								<option value="1">Напитки</option>
+								<option value="2">Молочные продукты</option>
+								<option value="3">Десерты</option>
+								<option value="4">Снеки</option>
+							</select>
+						</div>
+						<div class="flex gap-2">
+							<button onclick="exportInventory()" class="flex-1 md:flex-none bg-indigo-600 text-white px-4 py-2.5 rounded-xl text-[11px] font-bold flex items-center justify-center gap-2">
+								<i data-lucide="download" class="w-4 h-4"></i> Экспорт
+							</button>
+							<button onclick="document.getElementById('csvImportInput').click()" class="flex-1 md:flex-none bg-emerald-600 text-white px-4 py-2.5 rounded-xl text-[11px] font-bold flex items-center justify-center gap-2">
+								<i data-lucide="upload" class="w-4 h-4"></i> Импорт
+							</button>
+							<input type="file" id="csvImportInput" accept=".csv" class="hidden" onchange="importCSV(event)">
+						</div>
+					</div>
+					<div class="overflow-x-auto">
+						<table class="w-full text-left min-w-[600px]">
+							<thead class="bg-slate-50 border-b text-slate-500 text-[10px] uppercase font-bold tracking-widest sticky top-0">
+								<tr><th class="px-6 py-4">Товар</th><th class="px-6 py-4">Категория</th><th class="px-6 py-4">Остаток</th><th class="px-6 py-4 text-right">Цена</th></tr>
+							</thead>
+							<tbody id="inventory-table-body" class="divide-y text-sm bg-white"></tbody>
+						</table>
+					</div>
+				</div>
+			</section>
+
+			<section id="tab-finance" class="tab-content">
+				<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
+					<div class="card p-6 md:p-10 text-center">
+						<p class="text-slate-400 text-[10px] font-bold uppercase mb-2">Активы</p>
+						<div id="fin-total-val" class="text-3xl md:text-5xl font-black text-slate-900 tracking-tighter">0 ₽</div>
+					</div>
+					<div class="lg:col-span-2 card p-6 md:p-8">
+						<div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+							<h3 class="font-bold text-xl">Аналитический отчет AI</h3>
+							<button onclick="sendTelegramReport()" class="w-full md:w-auto bg-indigo-100 text-indigo-700 px-4 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-2">
+								<i data-lucide="send" class="w-4 h-4"></i> В Telegram
+							</button>
+						</div>
+						<div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-8">
+							<div class="p-6 bg-rose-50 rounded-2xl border border-rose-100">
+								<p class="text-[10px] font-bold text-rose-400 uppercase">Потери</p>
+								<div id="fin-loss" class="text-2xl font-black text-rose-600">0 ₽</div>
+							</div>
+							<div class="p-6 bg-indigo-50 rounded-2xl border border-indigo-100">
+								<p class="text-[10px] font-bold text-indigo-400 uppercase">Спасено</p>
+								<div id="fin-saved" class="text-2xl font-black text-indigo-600">0 ₽</div>
+							</div>
+						</div>
+						<div class="p-4 md:p-6 bg-slate-50 rounded-2xl flex items-center gap-4 border border-slate-100">
+							<div class="shrink-0 w-12 h-12 bg-white rounded-xl shadow-sm flex items-center justify-center text-indigo-600"><i data-lucide="lightbulb"></i></div>
+							<p id="finance-advice-text" class="text-xs md:text-sm text-slate-600 leading-relaxed"></p>
+						</div>
+					</div>
+				</div>
+			</section>
+		</div>
+	</main>
+
+	<div id="custom-modal" class="fixed inset-0 z-[200] hidden flex items-center justify-center bg-slate-900/60 backdrop-blur-sm px-4">
+		<div class="bg-white rounded-3xl p-6 md:p-8 max-w-sm w-full shadow-2xl transform transition-all">
+			<div id="modal-icon" class="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"></div>
+			<h3 id="modal-title" class="text-xl font-bold text-center text-slate-900 mb-2"></h3>
+			<p id="modal-text" class="text-slate-500 text-center text-sm mb-6"></p>
+			<button onclick="closeModal()" class="w-full py-4 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition">Понятно</button>
+		</div>
+	</div>
+
+	<script src="assets/script.js"></script>
+</body>
+</html>

@@ -1,0 +1,29 @@
+.glass-panel {
+	background: rgba(15, 23, 42, 0.6);
+	backdrop-filter: blur(16px);
+	box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+}
+
+.btn-neon {
+	border: 1px solid #00F2FF;
+	color: #00F2FF;
+	box-shadow: 0 0 10px rgba(0, 242, 255, 0.2), inset 0 0 10px rgba(0, 242, 255, 0.1);
+}
+.btn-neon:hover {
+	background: #00F2FF;
+	color: #0f172a;
+	box-shadow: 0 0 20px #00F2FF;
+}
+
+.scanner-line {
+	animation: scan 2s linear infinite;
+}
+@keyframes scan {
+	0% { top: 0; box-shadow: 0 0 15px #00F2FF; }
+	50% { top: 100%; box-shadow: 0 -5px 15px #00F2FF; }
+	100% { top: 0; box-shadow: 0 0 15px #00F2FF; }
+}
+
+.custom-scroll::-webkit-scrollbar { width: 4px; }
+.custom-scroll::-webkit-scrollbar-track { background: transparent; }
+.custom-scroll::-webkit-scrollbar-thumb { background: #00F2FF; border-radius: 4px; }
